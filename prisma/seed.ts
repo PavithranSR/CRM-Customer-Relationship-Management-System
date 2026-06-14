@@ -1,4 +1,4 @@
-import { PrismaClient, Role } from "@prisma/client";
+import { PrismaClient, Prisma } from "@prisma/client";
 import bcrypt from "bcryptjs";
 
 const prisma = new PrismaClient();
@@ -15,7 +15,7 @@ async function main() {
     update: {
       password: adminPassword,
       name: "Admin",
-      role: Role.ADMIN,
+      role: 'ADMIN' as any,
       department: "Management",
       position: "System Administrator",
       isActive: true,
@@ -24,7 +24,7 @@ async function main() {
       email: DEFAULT_ADMIN_EMAIL,
       password: adminPassword,
       name: "Admin",
-      role: Role.ADMIN,
+      role: 'ADMIN' as any,
       department: "Management",
       position: "System Administrator",
       isActive: true,
