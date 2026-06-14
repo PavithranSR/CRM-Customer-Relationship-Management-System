@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
 ## Getting Started
@@ -76,3 +77,7 @@ node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"
 ```
 
 Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+=======
+# CRM-Customer-Relationship-Management-System
+Developed a CRM System using React.js, Node.js, Express.js, and REST APIs to manage customer data and sales leads. Implemented pipeline tracking, role-based access control (RBAC), and interactive dashboards with reporting and filtering features to improve workflow efficiency and customer relationship management.
+>>>>>>> 854654ac2f5b48663848e82e722d0a001867f513
