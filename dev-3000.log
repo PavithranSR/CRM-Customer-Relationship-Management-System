@@ -1,0 +1,18 @@
+
+> project@0.1.0 dev
+> next dev
+
+▲ Next.js 16.1.6 (Turbopack)
+- Local:         http://localhost:3000
+- Network:       http://192.168.1.22:3000
+- Environments: .env
+
+✓ Starting...
+Creating turbopack project {
+  dir: 'C:\\Users\\Prathap\\OneDrive\\Desktop\\crm\\matt-project-management',
+  testMode: true
+}
+✓ Ready in 1710ms
+ GET / 307 in 1254ms (compile: 1032ms, render: 222ms)
+ GET /login 200 in 468ms (compile: 332ms, render: 137ms)
+[?25h

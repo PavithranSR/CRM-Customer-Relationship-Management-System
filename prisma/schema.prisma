@@ -1,0 +1,435 @@
+// Employee Work Tracking System - Database Schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+// Enums
+enum Role {
+  ADMIN
+  BA
+  TEAMLEADER
+  EMPLOYEE
+}
+
+enum ProjectStatus {
+  PLANNING
+  IN_PROGRESS
+  ON_HOLD
+  COMPLETED
+  CANCELLED
+}
+
+enum Priority {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum TimeEntryStatus {
+  DRAFT
+  SUBMITTED
+  APPROVED
+}
+
+enum ProjectType {
+  INDIVIDUAL
+  TEAM
+}
+
+enum ActivityAction {
+  CREATE
+  UPDATE
+  DELETE
+  ASSIGN
+  UNASSIGN
+  STATUS_CHANGE
+  HOLD
+  RESTART
+  LOGIN
+  LOGOUT
+}
+
+enum QuotationStatus {
+  DRAFT
+  SENT
+}
+
+enum PaymentType {
+  FIXED
+  PERCENTAGE
+  MONTHLY
+}
+
+// Auth.js Models
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@map("accounts")
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("sessions")
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+  @@map("verification_tokens")
+}
+
+// Application Models
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  emailVerified DateTime?
+  password      String
+  name          String
+  avatar        String?
+  role          Role      @default(EMPLOYEE)
+  department    String?
+  position      String?
+  phone         String?
+  hireDate      DateTime?
+  teamId        String?
+  permissions   Json?
+  isActive      Boolean   @default(true)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  // Relations
+  accounts        Account[]
+  sessions        Session[]
+  team            Team?               @relation(fields: [teamId], references: [id], onDelete: SetNull)
+  assignments     ProjectAssignment[]
+  timeEntries     TimeEntry[]
+  managedProjects Project[]           @relation("ProjectManager")
+  crmLeads        CrmLead[]
+  crmOwnedLeads   CrmLead[]           @relation("CrmLeadOwner")
+  crmStages       CrmStage[]
+  crmQuotations   CrmQuotation[]
+  crmInvoices     CrmQuotationInvoice[]
+  activityLogs    ActivityLog[]       @relation("ActivityUser")
+  createdLogs     ActivityLog[]       @relation("ActivityCreator")
+
+  @@index([teamId])
+  @@map("users")
+}
+
+model Team {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  members User[]
+
+  @@map("teams")
+}
+
+model Project {
+  id             String        @id @default(cuid())
+  name           String
+  description    String?       @db.Text
+  code           String        @unique
+  serviceName    String?
+  unitName       String?
+  unitCount      Int?
+  unitPrice      Float?
+  costPerUnit    Float?
+  subtotalAmount Float?
+  gstPercent     Float         @default(18)
+  gstAmount      Float?
+  finalAmount    Float?
+  profitAmount   Float?
+  invoicingPolicy String?
+  tags           String?
+  expectedClosingDate DateTime?
+  type           ProjectType   @default(INDIVIDUAL)
+  status         ProjectStatus @default(PLANNING)
+  priority       Priority      @default(MEDIUM)
+  progress       Int           @default(0)
+  estimatedHours Float?
+  actualHours    Float         @default(0)
+  startDate      DateTime?
+  deadline       DateTime?
+  completedAt    DateTime?
+  holdReason     String?       @db.Text
+  holdStartDate  DateTime?
+  totalHoldDays  Int           @default(0)
+  managerId      String?
+  clientId       String?
+  stageId        String?
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  // Relations
+  manager      User?               @relation("ProjectManager", fields: [managerId], references: [id], onDelete: SetNull)
+  client       Client?             @relation(fields: [clientId], references: [id], onDelete: SetNull)
+  stage        ProjectStage?       @relation(fields: [stageId], references: [id], onDelete: SetNull)
+  assignments  ProjectAssignment[]
+  timeEntries  TimeEntry[]
+  activityLogs ActivityLog[]
+
+  @@index([stageId])
+  @@map("projects")
+}
+
+model ProjectStage {
+  id        String    @id @default(cuid())
+  name      String    @unique
+  sortOrder Int       @default(0)
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  projects  Project[]
+
+  @@map("project_stages")
+}
+
+model ProjectAssignment {
+  id             String    @id @default(cuid())
+  projectId      String
+  userId         String
+  role           String?
+  hoursAllocated Float?
+  assignedAt     DateTime  @default(now())
+  unassignedAt   DateTime?
+  isActive       Boolean   @default(true)
+
+  // Relations
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([projectId, userId])
+  @@map("project_assignments")
+}
+
+model TimeEntry {
+  id          String          @id @default(cuid())
+  userId      String
+  projectId   String
+  taskId      String?
+  taskTitle   String?
+  date        DateTime        @db.Date
+  hours       Float
+  description String?         @db.Text
+  isBillable  Boolean         @default(true)
+  status      TimeEntryStatus @default(DRAFT)
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+
+  // Relations
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([userId, date])
+  @@index([projectId, date])
+  @@index([taskId, date])
+  @@map("time_entries")
+}
+
+model ActivityLog {
+  id          String         @id @default(cuid())
+  action      ActivityAction
+  entityType  String
+  entityId    String
+  projectId   String?
+  userId      String?
+  createdById String
+  metadata    Json?
+  ipAddress   String?
+  userAgent   String?
+  createdAt   DateTime       @default(now())
+
+  // Relations
+  user      User?    @relation("ActivityUser", fields: [userId], references: [id], onDelete: SetNull)
+  createdBy User     @relation("ActivityCreator", fields: [createdById], references: [id], onDelete: Cascade)
+  project   Project? @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([entityType, entityId])
+  @@index([createdById, createdAt])
+  @@map("activity_logs")
+}
+
+model CrmLead {
+  id          String    @id @default(cuid())
+  title       String
+  ownerId     String?
+  clientName  String?
+  email       String?
+  phone       String?
+  value       Float?
+  probabilityLevel Int  @default(1)
+  serviceName String?
+  unitName    String?
+  unitCount   Int?
+  unitPrice   Float?
+  costPerUnit Float?
+  gstPercent  Float     @default(18)
+  subtotalAmount Float?
+  gstAmount   Float?
+  finalAmount Float?
+  profitAmount Float?
+  invoicingPolicy String?
+  tags        String?
+  expectedClosingDate DateTime?
+  stage       String    @default("new")
+  notes       String?   @db.Text
+  createdById String
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  createdBy User  @relation(fields: [createdById], references: [id], onDelete: Cascade)
+  owner     User? @relation("CrmLeadOwner", fields: [ownerId], references: [id], onDelete: SetNull)
+  quotations CrmQuotation[]
+
+  @@index([stage])
+  @@index([ownerId])
+  @@index([title])
+  @@map("crm_leads")
+}
+
+model CrmStage {
+  id          String   @id @default(cuid())
+  key         String   @unique
+  label       String
+  position    Int
+  createdById String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  createdBy User? @relation(fields: [createdById], references: [id], onDelete: SetNull)
+
+  @@index([position])
+  @@map("crm_stages")
+}
+
+model CrmQuotation {
+  id             String          @id @default(cuid())
+  crmLeadId      String
+  quotationNo    String          @unique
+  title          String
+  clientName     String
+  clientEmail    String
+  projectTitle   String
+  serviceName    String?
+  unitName       String?
+  unitCount      Int
+  unitPrice      Float
+  gstPercent     Float           @default(18)
+  subtotalAmount Float
+  gstAmount      Float
+  totalAmount    Float
+  terms          String?         @db.Text
+  notes          String?         @db.Text
+  validUntil     DateTime?
+  status         QuotationStatus @default(DRAFT)
+  sentAt         DateTime?
+  createdById    String
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+
+  crmLead   CrmLead               @relation(fields: [crmLeadId], references: [id], onDelete: Cascade)
+  createdBy User                  @relation(fields: [createdById], references: [id], onDelete: Cascade)
+  invoice   CrmQuotationInvoice?
+  items     CrmQuotationItem[]
+
+  @@index([crmLeadId, createdAt])
+  @@index([status])
+  @@map("crm_quotations")
+}
+
+model CrmQuotationItem {
+  id           String        @id @default(cuid())
+  quotationId  String
+  name         String
+  unitCount    Int           @default(1)
+  amount       Float
+  gstPercent   Float         @default(0)
+  tags         String?
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+
+  quotation CrmQuotation @relation(fields: [quotationId], references: [id], onDelete: Cascade)
+
+  @@index([quotationId])
+  @@map("crm_quotation_items")
+}
+
+model CrmQuotationInvoice {
+  id           String      @id @default(cuid())
+  quotationId  String      @unique
+  paymentType  PaymentType
+  amount       Float
+  percentage   Float?
+  months       Int?
+  balanceAmount Float
+  notes        String?     @db.Text
+  createdById  String
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+
+  quotation CrmQuotation @relation(fields: [quotationId], references: [id], onDelete: Cascade)
+  createdBy User         @relation(fields: [createdById], references: [id], onDelete: Cascade)
+
+  @@index([paymentType])
+  @@map("crm_quotation_invoices")
+}
+
+model Client {
+  id          String    @id @default(cuid())
+  name        String
+  collegeName String?
+  courseName  String?
+  email       String    @unique
+  phone       String?
+  street      String?
+  city        String?
+  zip         String?
+  state       String?
+  country     String?
+  serviceName String?
+  projectName String?
+  tags        String?
+  address     String?   @db.Text
+  notes       String?   @db.Text
+  isActive    Boolean   @default(true)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  projects    Project[]
+
+  @@index([name])
+  @@index([email])
+  @@map("clients")
+}

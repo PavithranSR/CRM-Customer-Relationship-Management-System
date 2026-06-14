@@ -1,0 +1,51 @@
+import { z } from "zod";
+
+export const leadStageSchema = z.string().trim().min(1).max(80);
+
+export const createLeadSchema = z.object({
+  title: z.string().min(1, "Lead title is required").max(120),
+  clientName: z.string().trim().min(1, "Client is required").max(120),
+  email: z.string().email("Invalid email").optional().or(z.literal("")),
+  phone: z.string().max(30).optional(),
+  value: z.coerce.number().nonnegative().optional(),
+  probabilityLevel: z.coerce.number().int().min(1).max(3).default(1),
+  serviceName: z.string().max(120).optional(),
+  unitName: z.string().max(80).optional(),
+  unitCount: z.coerce.number().int().nonnegative().optional(),
+  unitPrice: z.coerce.number().nonnegative().optional(),
+  costPerUnit: z.coerce.number().nonnegative().optional(),
+  gstPercent: z.coerce.number().min(0).max(100).optional(),
+  subtotalAmount: z.coerce.number().nonnegative().optional(),
+  gstAmount: z.coerce.number().nonnegative().optional(),
+  finalAmount: z.coerce.number().nonnegative().optional(),
+  profitAmount: z.coerce.number().optional(),
+  invoicingPolicy: z.string().max(80).optional(),
+  tags: z.string().max(200).optional(),
+  expectedClosingDate: z.coerce.date().optional(),
+  notes: z.string().max(2000).optional(),
+  stage: leadStageSchema.default("new"),
+});
+
+export const updateLeadSchema = z.object({
+  title: z.string().min(1).max(120).optional(),
+  clientName: z.string().max(120).optional(),
+  email: z.string().email().optional().or(z.literal("")),
+  phone: z.string().max(30).optional(),
+  value: z.coerce.number().nonnegative().optional(),
+  probabilityLevel: z.coerce.number().int().min(1).max(3).optional(),
+  serviceName: z.string().max(120).optional(),
+  unitName: z.string().max(80).optional(),
+  unitCount: z.coerce.number().int().nonnegative().optional(),
+  unitPrice: z.coerce.number().nonnegative().optional(),
+  costPerUnit: z.coerce.number().nonnegative().optional(),
+  gstPercent: z.coerce.number().min(0).max(100).optional(),
+  subtotalAmount: z.coerce.number().nonnegative().optional(),
+  gstAmount: z.coerce.number().nonnegative().optional(),
+  finalAmount: z.coerce.number().nonnegative().optional(),
+  profitAmount: z.coerce.number().optional(),
+  invoicingPolicy: z.string().max(80).optional(),
+  tags: z.string().max(200).optional(),
+  expectedClosingDate: z.coerce.date().optional(),
+  notes: z.string().max(2000).optional(),
+  stage: leadStageSchema.optional(),
+});
