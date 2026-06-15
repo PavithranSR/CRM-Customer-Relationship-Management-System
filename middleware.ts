@@ -2,16 +2,24 @@ import { getToken } from "next-auth/jwt";
 import { NextResponse, type NextRequest } from "next/server";
 import { normalizeEmployeePermissions } from "@/lib/employee-permissions";
 
-const authSecret =
-  process.env.AUTH_SECRET ??
-  process.env.NEXTAUTH_SECRET ??
-  (process.env.NODE_ENV === "development"
-    ? "dev-only-auth-secret-change-me"
-    : undefined);
+const authSecret = (() => {
+  const secret =
+    process.env.AUTH_SECRET ??
+    process.env.NEXTAUTH_SECRET ??
+    (process.env.NODE_ENV === "development"
+      ? "dev-only-auth-secret-change-me"
+      : undefined);
 
-if (!authSecret) {
-  throw new Error("Missing AUTH_SECRET/NEXTAUTH_SECRET. Set AUTH_SECRET in your environment.");
-}
+  if (!secret) {
+    // At build time the secret may not be available; return a placeholder
+    // so the module can load. The middleware only runs at request time.
+    if (typeof process !== "undefined" && process.env.NEXT_PHASE === "phase-production-build") {
+      return "build-time-placeholder";
+    }
+    throw new Error("Missing AUTH_SECRET/NEXTAUTH_SECRET. Set AUTH_SECRET in your environment.");
+  }
+  return secret;
+})();
 
 function toStringArray(value: unknown) {
   if (!Array.isArray(value)) {

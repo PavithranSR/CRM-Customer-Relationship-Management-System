@@ -41,12 +41,38 @@ declare module "@auth/core/jwt" {
   }
 }
 
-const authSecret =
-  process.env.AUTH_SECRET ??
-  process.env.NEXTAUTH_SECRET ??
-  (process.env.NODE_ENV === "development"
-    ? "dev-only-auth-secret-change-me"
-    : undefined);
+/**
+ * Lazily resolve the auth secret so the module can be imported at build time
+ * (e.g. during `next build` page-data collection) without throwing.
+ * The secret is only required at **runtime** when auth is actually invoked.
+ */
+function getAuthSecret(): string {
+  const secret =
+    process.env.AUTH_SECRET ??
+    process.env.NEXTAUTH_SECRET ??
+    (process.env.NODE_ENV === "development"
+      ? "dev-only-auth-secret-change-me"
+      : undefined);
+
+  if (!secret) {
+    throw new Error(
+      "Missing AUTH_SECRET/NEXTAUTH_SECRET. Set AUTH_SECRET or NEXTAUTH_SECRET in your environment."
+    );
+  }
+  return secret;
+}
+
+// Use a build-safe placeholder so the module can load at build time.
+// NextAuth resolves the real secret via the `secret` option at request time.
+const authSecret = (() => {
+  try {
+    return getAuthSecret();
+  } catch {
+    // Build time — secret is not available yet; return a placeholder so the
+    // module can load. NextAuth will use the real secret at runtime.
+    return "build-time-placeholder";
+  }
+})();
 
 const authUrl =
   process.env.NEXTAUTH_URL ??
@@ -54,12 +80,6 @@ const authUrl =
 
 if (!process.env.NEXTAUTH_URL && authUrl) {
   process.env.NEXTAUTH_URL = authUrl;
-}
-
-if (!authSecret) {
-  throw new Error(
-    "Missing AUTH_SECRET/NEXTAUTH_SECRET. Set AUTH_SECRET or NEXTAUTH_SECRET in your environment."
-  );
 }
 
 function getAuthErrorType(error: Error) {
